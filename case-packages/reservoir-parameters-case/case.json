@@ -1,0 +1,149 @@
+{
+  "id": "welllog-reservoir-mlp-05",
+  "sceneId": "w2",
+  "title": "储层参数智能解释：深度回归与岩心试油约束",
+  "version": "2.0.2",
+  "updated": "2026-11-01",
+  "methods": [
+    "ts",
+    "opt"
+  ],
+  "tabs": {
+    "background": {
+      "label": "专业背景",
+      "lede": "真实浏览器训练的多层神经网络，结合稀疏标定、物理先验与独立层段验证。",
+      "judge": [
+        {
+          "label": "输入",
+          "value": "4通道测井",
+          "desc": "训练/验证/测试按井分离"
+        },
+        {
+          "label": "核心",
+          "value": "多层神经网络",
+          "desc": "反向传播与Adam"
+        },
+        {
+          "label": "约束",
+          "value": "岩心 + 试油",
+          "desc": "训练层段联合损失"
+        },
+        {
+          "label": "难度",
+          "value": "中",
+          "desc": "稀疏标定与深度错配"
+        }
+      ],
+      "sections": [
+        {
+          "no": 1,
+          "en": "PROBLEM",
+          "title": "岩石能装多少、流得多快、其中有多少水？",
+          "html": "<p>储层评价需要同时理解孔隙度、渗透率和含水饱和度：孔隙多不代表连通好，连通好也不意味着孔隙中一定有油。测井曲线是物理响应，不能单凭一条曲线给出完整储层结论。</p><svg viewBox=\"0 0 760 190\" role=\"img\" aria-label=\"孔隙、连通性与孔隙中水的比例\" style=\"width:100%;max-width:760px;background:#fdfcf9;border:1px solid #e9e4d8;border-radius:9px;margin:12px 0\"><title>孔隙、连通性与孔隙中水的比例</title><rect x=\"14\" y=\"15\" width=\"236\" height=\"160\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"26\" y=\"38\" font-size=\"12\" font-family=\"sans-serif\" fill=\"#4d565b\">孔隙度 φ</text><circle cx=\"42\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"81\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"120\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"159\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"198\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"42\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"81\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"120\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"159\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"198\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><text x=\"26\" y=\"152\" font-size=\"12\" font-family=\"sans-serif\" fill=\"#4d565b\">空隙体积 / 岩石总体积</text><rect x=\"262\" y=\"15\" width=\"236\" height=\"160\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"274\" y=\"38\" font-size=\"12\" font-family=\"sans-serif\" fill=\"#4d565b\">渗透率 k</text><circle cx=\"290\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"329\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"368\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"407\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"446\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"290\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"329\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"368\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"407\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"446\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><path d=\"M290 74h156\" stroke=\"#2f7d6b\" stroke-width=\"4\" opacity=\".6\"/><path d=\"M290 109h156\" stroke=\"#2f7d6b\" stroke-width=\"4\" opacity=\".6\"/><text x=\"274\" y=\"152\" font-size=\"12\" font-family=\"sans-serif\" fill=\"#4d565b\">流体通过岩石的难易</text><rect x=\"510\" y=\"15\" width=\"236\" height=\"160\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"522\" y=\"38\" font-size=\"12\" font-family=\"sans-serif\" fill=\"#4d565b\">含水饱和度 Sw</text><circle cx=\"538\" cy=\"74\" r=\"11\" fill=\"#7aa2bf\" stroke=\"#c9c2b0\"/><circle cx=\"577\" cy=\"74\" r=\"11\" fill=\"#7aa2bf\" stroke=\"#c9c2b0\"/><circle cx=\"616\" cy=\"74\" r=\"11\" fill=\"#7aa2bf\" stroke=\"#c9c2b0\"/><circle cx=\"655\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"694\" cy=\"74\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"538\" cy=\"109\" r=\"11\" fill=\"#7aa2bf\" stroke=\"#c9c2b0\"/><circle cx=\"577\" cy=\"109\" r=\"11\" fill=\"#7aa2bf\" stroke=\"#c9c2b0\"/><circle cx=\"616\" cy=\"109\" r=\"11\" fill=\"#7aa2bf\" stroke=\"#c9c2b0\"/><circle cx=\"655\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><circle cx=\"694\" cy=\"109\" r=\"11\" fill=\"#fdfcf9\" stroke=\"#c9c2b0\"/><text x=\"522\" y=\"152\" font-size=\"12\" font-family=\"sans-serif\" fill=\"#4d565b\">水体积 / 孔隙总体积</text></svg><p>传统解释常借助经验关系与岩心标定。面对不同岩性、泥质含量及流体条件，多条曲线的关系可能交叠，需要联合分析。</p><p>本例把岩心稀疏、深度归位误差和试油验证串联起来，不只画出预测曲线。孔隙度与含水饱和度标签来自模拟岩心/实验解释；渗透率在log10(k / 1mD)尺度建模。</p>"
+        },
+        {
+          "no": 2,
+          "en": "INTERVENTION",
+          "title": "深度回归、物理边界和试油约束如何结合？",
+          "html": "<p>实际训练一个4→16→12→3多层感知机，两个隐藏层用tanh；4条输入为GR、DEN、CNL、logRT，3个输出为孔隙度、log渗透率、含水饱和度。反向传播与Adam更新均在浏览器中执行。</p><svg viewBox=\"0 0 760 110\" role=\"img\" aria-label=\"4条测井特征，隐藏层16个神经元，隐藏层12个神经元，3个物性输出\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10.0\" y=\"20\" width=\"177.5\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"20.0\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">4条测井特征</text><rect x=\"197.5\" y=\"20\" width=\"177.5\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"207.5\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">隐藏层16个神经元</text><rect x=\"385.0\" y=\"20\" width=\"177.5\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"395.0\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">隐藏层12个神经元</text><rect x=\"572.5\" y=\"20\" width=\"177.5\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"582.5\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">3个物性输出</text></svg><p>普通网络仅使用稀疏岩心监督；约束网络采用有界输出，并在监督损失上加入训练井的层段试油参考损失。φ与Sw限制在0–1，渗透率在本合成区块先验0.01–1000mD内；这一区间不是适用于所有油田的普遍物理定律。KNN仍作为对照。</p><p>训练目标：岩心监督误差 + λ×训练层段log流量误差 + 小幅权重正则。独立测试试油参考不参与损失。对照包含输出映射与联合损失两项改变，不能把全部效果单独归因于某一种约束。</p>"
+        },
+        {
+          "no": 3,
+          "en": "DATA",
+          "title": "按井分离：训练、验证与最终测试",
+          "html": "<ul><li>训练：6口合成井，每井6–24个稀疏标定点，默认72点；同时提供30个训练层段的合成试油参考。</li><li>验证：另外2口合成井，仅展示独立误差，不反向传播，也不按测试结果选择训练轮次。</li><li>测试：另1口合成井，101个深度点；5个20m层段的试油参考仅用于最终验证。</li><li>标准化：均值和标准差只由训练标定点计算，测试曲线不参与拟合。</li><li>错配实验：把岩心标签配到偏移深度的测井输入，模拟归位错误；不是偷偷改变参考真值。</li></ul><p>所有井都来自同一套简化合成机制，井间分离不等于已证明真实跨区泛化。常规曲线单位、实验标签单位及来源须保留；真实数据还需井径、泥浆侵入、仪器与实验条件质控。</p><p>实验控制：改变标定点数不会改变同一训练井的试油参考；普通MLP、约束MLP与KNN均在相同验证井和测试井上评价。λ=0时仍计算并显示训练试油误差，但不把它加入更新梯度。</p>"
+        },
+        {
+          "no": 4,
+          "en": "DIFFICULTY",
+          "title": "独立层段验证：物性不能直接等于产量",
+          "html": "<p>试油部分使用带相对渗透率因子的简化径向达西代理：q=2πkhΔp/[μln(re/rw)]×(1−Sw)²。固定Δp=2MPa、μ=3mPa·s、re=200m、rw=0.1m，层厚20m，单位转换后输出m³/d；不包含皮肤、体积系数、复杂多相与非均质井筒耦合。</p><p>训练/测试参考流量均由各自隐藏物性场与独立测量扰动合成。模型只读取对应测井特征；测试参考没有反向输入模型。合成试油验证展示物性组合与流动能力的一致性，不能视为真实油井产能预测或生产保证。</p><p>MAE、RMSE、R²分别报告，φ和Sw误差为百分点pp，渗透率误差为dex。网络可能不如KNN，加入约束也不保证每项误差下降。参考方向：深度回归、物理约束学习、迁移学习；本例未把跨区微调实现成按钮。</p><p><a href=\"#/method/ts\">按时序方法检索</a> · <a href=\"#/scene/w1\">测井分层</a> · <a href=\"#/scene/w3\">成像测井裂缝识别</a></p><p>背景参考：<a href=\"https://www.slb.com/resource-library/article/2015/defining-permeability\" target=\"_blank\" rel=\"noopener\">SLB：渗透率与达西流动</a> · <a href=\"https://arxiv.org/abs/1412.6980\" target=\"_blank\" rel=\"noopener\">Adam优化算法原论文</a>。本演示采用手写JavaScript实现，不依赖PyTorch或后端。</p>"
+        }
+      ]
+    },
+    "workflow": {
+      "label": "案例流程",
+      "title": "从稀疏岩心标定到连续参数与试油验证",
+      "lead": [
+        "目标是把多条测井曲线转换为可验证的储层参数解释：不仅预测φ、k和Sw，还要说明标签怎样准备、网络怎样学习、约束怎样加入，以及如何在独立井上检查结果。",
+        "以下五步与当前演示中的数据、模型和指标逐项对应。合成数据允许演练完整流程，但不替代真实工区验证。"
+      ],
+      "stats": [
+        [
+          "训练井",
+          "6"
+        ],
+        [
+          "验证井",
+          "2"
+        ],
+        [
+          "测试井",
+          "1"
+        ]
+      ],
+      "steps": [
+        {
+          "name": "样点准备、深度归位与按井划分",
+          "role": "数据工程",
+          "do": "输入：6口训练井的测井曲线、稀疏岩心/实验标签，另有2口验证井和1口测试井。 操作：检查曲线单位、采样间隔与缺失；将标定标签配到相同深度的测井特征。按井分离训练、验证与测试；错配实验将标签配到偏移0–4m的位置。",
+          "effect": "形成训练标定点及明确的井级分组；默认每口训练井12点，共72点。",
+          "trap": "不能将同井相邻深度随机拆分后宣称跨井效果；归位错误会把正确标签对应到错误曲线。"
+        },
+        {
+          "name": "特征构造与训练集标准化",
+          "role": "特征工程",
+          "do": "输入：GR、DEN、CNL、RT四条曲线，以及训练点的三个参数标签。 操作：对RT取log10；仅从训练标定点计算各通道均值与标准差，并用同一参数处理验证与测试。渗透率标签转换为log10(k / 1mD)并缩放参与训练。",
+          "effect": "得到尺度可比较的4维输入，保存标准化参数供所有模型共用。",
+          "trap": "不能用测试数据估计均值与标准差；孔隙度和饱和度的小数、百分数不能混用。"
+        },
+        {
+          "name": "多层神经网络学习与岩心监督",
+          "role": "算法核心",
+          "do": "输入：标准化训练特征及对应的孔隙度、渗透率、含水饱和度标定值。 操作：训练4→16→12→3网络，隐藏层用tanh，反向传播计算梯度，Adam更新权重。监督损失对三个归一化输出计算误差，并对孔隙度加权；普通网络与约束网络使用相同训练点。",
+          "effect": "获得能够从测井特征预测三个物性参数的模型；记录实际训练损失曲线。",
+          "trap": "训练损失下降不代表独立井误差一定下降；网络可能不如KNN。训练轮次可调，但测试参考不能进入梯度。"
+        },
+        {
+          "name": "物理先验与训练试油联合约束",
+          "role": "约束与对比",
+          "do": "输入：稀疏监督标签、训练井30个20m层段的合成试油参考，以及固定流动条件。 操作：约束网络通过有界输出限制φ、Sw在0–1内，采用本示范区块渗透率先验0.01–1000mD。每个训练层段取5个代表位置预测物性，代入简化达西代理并加入log流量误差；前30轮逐步引入权重λ。",
+          "effect": "形成岩心监督与试油一致性联合训练；对照普通MLP与KNN。λ=0关闭试油梯度，但仍显示试油误差。",
+          "trap": "试油约束使用训练井参考，不能拿测试试油调训练权重后声称盲测。代理忽略皮肤等因素，约束本身也可能引入偏差。"
+        },
+        {
+          "name": "连续预测、独立层段验证与人工复核",
+          "role": "验证与交付",
+          "do": "输入：训练完成的三个模型、2口验证井、1口测试井，以及5个独立测试层段参考。 操作：沿测试井101个深度点预测三个参数，计算MAE、RMSE、R²；在相同验证井上评价三种模型。将测试层段预测物性转换为流动代理，与独立合成试油参考比较，并检查物理越界。",
+          "effect": "输出连续参数剖面、散点图、模型误差表、层段试油对比及JSON结果；定位应复核的深度和层段。",
+          "trap": "测试井参考不参与模型训练。二维图表好看不等于地质解释正确；真实应用仍需岩心、试油、井况与专业人员复核。"
+        }
+      ],
+      "metrics": {
+        "title": "五步输入与输出",
+        "html": "<h4>1. 样点归位与按井划分</h4><svg viewBox=\"0 0 760 110\" role=\"img\" aria-label=\"样点归位与按井划分，6训练井、2验证井、1测试井，稀疏标签与测井深度对应，测试不参与拟\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10.0\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"20.0\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">样点归位与按井划分</text><rect x=\"258.33333333333337\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"268.33333333333337\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">6训练井、2验证井、1测试井</text><rect x=\"506.6666666666667\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"516.6666666666667\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">稀疏标签与测井深度对应，测试不参与拟</text></svg><h4>2. 训练集特征标准化</h4><svg viewBox=\"0 0 760 110\" role=\"img\" aria-label=\"训练集特征标准化，GR / DEN / CNL / logRT，仅由训练标定点估计尺度。\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10.0\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"20.0\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">训练集特征标准化</text><rect x=\"258.33333333333337\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"268.33333333333337\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">GR / DEN / CNL / logRT</text><rect x=\"506.6666666666667\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"516.6666666666667\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">仅由训练标定点估计尺度。</text></svg><h4>3. 多层神经网络训练</h4><svg viewBox=\"0 0 760 110\" role=\"img\" aria-label=\"多层神经网络训练，岩心标签 + 训练层段试油，反向传播，展示监督损失与试油损失。\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10.0\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"20.0\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">多层神经网络训练</text><rect x=\"258.33333333333337\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"268.33333333333337\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">岩心标签 + 训练层段试油</text><rect x=\"506.6666666666667\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"516.6666666666667\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">反向传播，展示监督损失与试油损失。</text></svg><h4>4. 物理约束与模型对比</h4><svg viewBox=\"0 0 760 110\" role=\"img\" aria-label=\"物理约束与模型对比，普通MLP / 约束MLP / KNN，输出范围控制并对比独立误差，保留失败\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10.0\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"20.0\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">物理约束与模型对比</text><rect x=\"258.33333333333337\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"268.33333333333337\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">普通MLP / 约束MLP / KNN</text><rect x=\"506.6666666666667\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"516.6666666666667\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">输出范围控制并对比独立误差，保留失败</text></svg><h4>5. 测试层段与人工复核</h4><svg viewBox=\"0 0 760 110\" role=\"img\" aria-label=\"测试层段与人工复核，连续参数 + 5个测试层段，物性误差、试油代理误差和异常范围可追\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10.0\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"20.0\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">测试层段与人工复核</text><rect x=\"258.33333333333337\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"268.33333333333337\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">连续参数 + 5个测试层段</text><rect x=\"506.6666666666667\" y=\"20\" width=\"238.33333333333334\" height=\"60\" rx=\"6\" fill=\"#f5f2ea\"/><text x=\"516.6666666666667\" y=\"53\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">物性误差、试油代理误差和异常范围可追</text></svg>"
+      },
+      "fails": [
+        {
+          "name": "标定错位",
+          "why": "岩心与曲线深度不一致。"
+        },
+        {
+          "name": "约束失配",
+          "why": "代理公式与真实井况不符时会引入偏差。"
+        },
+        {
+          "name": "跨区差异",
+          "why": "同机制合成井测试不能代替外部区块验证。"
+        }
+      ]
+    },
+    "demo": {
+      "mode": "auto",
+      "html": "demo/index.html",
+      "label": "案例演示",
+      "height": 900,
+      "intro": "4→16→12→3神经网络实际训练，岩心与训练试油联合约束，按井分离独立评价。"
+    }
+  }
+}

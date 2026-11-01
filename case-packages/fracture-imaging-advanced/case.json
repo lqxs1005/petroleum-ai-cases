@@ -1,0 +1,147 @@
+{
+  "id": "welllog-fracture-objects-05",
+  "sceneId": "w3",
+  "title": "成像测井裂缝与孔洞识别：对象检测与参数解释",
+  "version": "1.0.0",
+  "updated": "2026-11-01",
+  "methods": [
+    "cv"
+  ],
+  "tabs": {
+    "background": {
+      "label": "专业背景",
+      "lede": "双目标像素学习、几何拟合与形态筛选，形成可追溯的裂缝和孔洞解释成果。",
+      "judge": [
+        {
+          "label": "对象",
+          "value": "裂缝 + 孔洞",
+          "desc": "像素与对象两级检测"
+        },
+        {
+          "label": "方法",
+          "value": "学习 + 几何",
+          "desc": "双分类器、拟合与形态筛选"
+        },
+        {
+          "label": "输出",
+          "value": "密度 / 产状 / 开度",
+          "desc": "具备标定与误差追溯"
+        },
+        {
+          "label": "难度",
+          "value": "高",
+          "desc": "干扰、分辨率、标定约束"
+        }
+      ],
+      "sections": [
+        {
+          "no": 1,
+          "en": "PROBLEM",
+          "title": "裂缝、孔洞与干扰：为什么必须联合解释？",
+          "html": "<p>井壁展开图以方位为横轴、深度为纵轴。天然平面裂缝在直井的理想展开图中形成正弦轨迹，孔洞形成局部区域；层理、诱导缝和噪声也能产生相似响应。它们分别关系到储集空间、流动通道与井周应力解释，误判会影响储层评价。</p><svg viewBox=\"0 0 760 190\" role=\"img\" aria-label=\"圆柱井壁展开、裂缝正弦轨迹与孔洞区域\" style=\"width:100%;max-width:760px;background:#fdfcf9;border:1px solid #e9e4d8;border-radius:9px;margin:12px 0\"><ellipse cx=\"95\" cy=\"42\" rx=\"48\" ry=\"16\" fill=\"#f5f2ea\" stroke=\"#c9c2b0\"/><path d=\"M47 42v100a48 16 0 0 0 96 0V42M47 85l96 30\" fill=\"none\" stroke=\"#79828a\"/><text x=\"35\" y=\"174\" font-size=\"12\" fill=\"#4d565b\">直井与倾斜平面相交</text><text x=\"196\" y=\"96\" font-size=\"16\">→</text><rect x=\"242\" y=\"28\" width=\"210\" height=\"122\" fill=\"#f5f2ea\"/><path d=\"M242 90Q294 35 347 90T452 90\" stroke=\"#2f7d6b\" stroke-width=\"2\" fill=\"none\"/><text x=\"242\" y=\"174\" font-size=\"12\" fill=\"#4d565b\">展开图：横向方位，纵向深度</text><circle cx=\"539\" cy=\"78\" r=\"14\" fill=\"#7e5a8d\"/><path d=\"M590 45v85M640 45v85\" stroke=\"#b26a39\" stroke-width=\"3\"/><text x=\"499\" y=\"174\" font-size=\"12\" fill=\"#4d565b\">孔洞：局部区域；诱导缝：成对纵向干扰</text></svg><p>本例模拟3条天然裂缝、3个孔洞、2条宽层理带及一对纵向诱导缝干扰。仅天然裂缝和孔洞为检测目标；真实天然/诱导成因不能只凭形状断定。显示灰度是合成响应，不等同于特定电成像或声成像仪器的完整物理响应。</p>"
+        },
+        {
+          "no": 2,
+          "en": "INTERVENTION",
+          "title": "像素学习 + 几何约束，形成对象级成果",
+          "html": "<p>两个逻辑回归分类器分别学习裂缝、孔洞分数，输入暗度及水平/垂直的近远邻域对比。采用4幅几何不同的合成训练图；每个分类器均衡使用600个正样本与600个负样本，少数类必要时重采样。</p><svg viewBox=\"0 0 760 105\" role=\"img\" aria-label=\"双目标监督像素学习到正弦拟合 / 连通域筛选到条数、密度、产状、尺寸\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"22\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">双目标监督像素学习</text><rect x=\"260\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"272\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">正弦拟合 / 连通域筛选</text><rect x=\"510\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"522\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">条数、密度、产状、尺寸</text><path d=\"M243 48h15M493 48h15\" stroke=\"#2f7d6b\"/></svg><p>裂缝：参数搜索与加权最小二乘拟合正弦轨迹，按周向支持率与残差筛选并去重。孔洞：周期连通域、形态过滤、邻近碎片合并，并排除与已拟合裂缝重叠的碎片。整个对象提取过程不读取测试真值。不是U-Net，不将模型分数称为已校准概率。</p><p>搜索与筛选边界：轨迹振幅6–28像素、最多保留6条、按中心位置去重；孔洞区域至少10像素。默认孔洞模型的少数类有重复抽样，不把1200条训练样本宣称为1200个独立地质样本。</p>"
+        },
+        {
+          "no": 3,
+          "en": "DATA",
+          "title": "数据与标定：每个专业量都要有依据",
+          "html": "<ul><li>图像与标签：裂缝、孔洞掩膜及干扰类型；真实项目按井分组验证。</li><li>方位：0°在左端，向右顺时针，0°/360°周期相接；需仪器北向标定。</li><li>深度：本例1000.000–1000.600 m，240个采样行；间隔为井段长度/239。</li><li>井径：默认216 mm，直井、圆形井筒假设；井斜与井径变化会影响产状换算。</li><li>开度标定：本例已知纵向高斯模糊σ=0.65像素；真实灰度图无法单独保证实际开度解释。</li></ul><p>测试图与训练图裂缝几何不同。测试标签只用于最终评估和参考轮廓；指标对应同一幅合成测试图，不代表独立工区泛化。孔洞面积比是二维井壁图像面积比，不是三维储层孔隙度。</p>"
+        },
+        {
+          "no": 4,
+          "en": "DIFFICULTY",
+          "title": "高难度场景：计算边界与质量控制",
+          "html": "<p>难点包括细小目标、类别不均衡、相似形态、断续轨迹和标定误差。像素IoU只衡量位置重叠；对象匹配、拟合残差与周向支持率共同评价裂缝解释。</p><p>直井几何：拟合 z=z₀+a·sinθ+b·cosθ，振幅A=√(a²+b²)；倾角δ=atan(2A/D)，最大深度方位作为倾向，走向按倾向+90°取0–180°。P10=检出裂缝条数/井段长度，仅为交切频度，不是体积裂缝密度。</p><p>开度输出为本合成标定模型下的估计：沿深度测得FWHM，扣除已知成像模糊，再乘cosδ换算平面法向宽度。低于模糊分辨限显示“不可分辨”；真实电成像需电学响应/充填与仪器标定，声成像也需相应标定，不能把图上像素宽度直接当作真实裂缝开度。</p><p>参考：<a href=\"https://www.iodp.tamu.edu/publications/209_IR/chap_02/c2_9.htm\" target=\"_blank\" rel=\"noopener\">IODP井壁成像</a> · <a href=\"https://www.slb.com/-/media/software-media-items/software/documents/external/product-sheets/techlog_wellbore_imaging.pdf\" target=\"_blank\" rel=\"noopener\">SLB成像解释功能</a> · <a href=\"#/method/cv\">计算机视觉方法</a>。真实数据扩展方向：U-Net分割、天然/诱导缝多类鉴别、缺失扇区与井斜校正。</p>"
+        }
+      ]
+    },
+    "workflow": {
+      "label": "案例流程",
+      "title": "从像素候选到专业解释成果",
+      "lead": [
+        "学习与物理几何约束结合，识别、计数、解释与验证在同一流程闭合。"
+      ],
+      "stats": [
+        [
+          "训练图",
+          "4幅"
+        ],
+        [
+          "测试分辨率",
+          "180×240"
+        ],
+        [
+          "检测对象",
+          "裂缝+孔洞"
+        ]
+      ],
+      "steps": [
+        {
+          "name": "几何与数据标定",
+          "role": "标定",
+          "do": "深度、方位、井径、仪器分辨率",
+          "effect": "输入像素对应物理尺度；直井假设明确。",
+          "trap": "真实井斜和不规则井径需额外校正。"
+        },
+        {
+          "name": "双目标像素学习",
+          "role": "学习",
+          "do": "4幅训练图、独立测试图、5种局部特征",
+          "effect": "生成裂缝与孔洞分数；不接触测试标签。",
+          "trap": "合成训练不代表真实工区泛化。"
+        },
+        {
+          "name": "对象检测与去干扰",
+          "role": "检测",
+          "do": "正弦候选搜索、连通域、形态筛选与碎片合并",
+          "effect": "输出轨迹和孔洞区域；纵向干扰不计入天然裂缝条数。",
+          "trap": "形态规则也可能漏掉真实断续裂缝。"
+        },
+        {
+          "name": "专业参数计算",
+          "role": "解释",
+          "do": "从拟合轨迹、对象面积与标定值计算",
+          "effect": "裂缝条数/P10、倾角/倾向/走向、开度估计、孔洞面积与等效直径。",
+          "trap": "开度依赖本例已知成像模型，不是未经标定的现场真值。"
+        },
+        {
+          "name": "分层验证与复核",
+          "role": "验证",
+          "do": "像素IoU、对象匹配、几何误差、参考叠加",
+          "effect": "展示误检和漏检；所有结果可导出并回查。",
+          "trap": "测试参考只用于评估，不应反复调参后宣称泛化。"
+        }
+      ],
+      "metrics": {
+        "title": "每一步的输入与输出",
+        "html": "<h4>1. 几何与数据标定</h4><svg viewBox=\"0 0 760 105\" role=\"img\" aria-label=\"几何与数据标定到深度、方位、井径、仪器分辨率到输入像素对应物理尺度；直井假设明\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"22\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">几何与数据标定</text><rect x=\"260\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"272\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">深度、方位、井径、仪器分辨率</text><rect x=\"510\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"522\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">输入像素对应物理尺度；直井假设明</text><path d=\"M243 48h15M493 48h15\" stroke=\"#2f7d6b\"/></svg><h4>2. 双目标像素学习</h4><svg viewBox=\"0 0 760 105\" role=\"img\" aria-label=\"双目标像素学习到4幅训练图、独立测试图、5种局部到生成裂缝与孔洞分数；不接触测试标\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"22\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">双目标像素学习</text><rect x=\"260\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"272\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">4幅训练图、独立测试图、5种局部</text><rect x=\"510\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"522\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">生成裂缝与孔洞分数；不接触测试标</text><path d=\"M243 48h15M493 48h15\" stroke=\"#2f7d6b\"/></svg><h4>3. 对象检测与去干扰</h4><svg viewBox=\"0 0 760 105\" role=\"img\" aria-label=\"对象检测与去干扰到正弦候选搜索、连通域、形态筛选与到输出轨迹和孔洞区域；纵向干扰不计\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"22\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">对象检测与去干扰</text><rect x=\"260\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"272\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">正弦候选搜索、连通域、形态筛选与</text><rect x=\"510\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"522\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">输出轨迹和孔洞区域；纵向干扰不计</text><path d=\"M243 48h15M493 48h15\" stroke=\"#2f7d6b\"/></svg><h4>4. 专业参数计算</h4><svg viewBox=\"0 0 760 105\" role=\"img\" aria-label=\"专业参数计算到从拟合轨迹、对象面积与标定值计算到裂缝条数/P10、倾角/倾向/走\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"22\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">专业参数计算</text><rect x=\"260\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"272\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">从拟合轨迹、对象面积与标定值计算</text><rect x=\"510\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"522\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">裂缝条数/P10、倾角/倾向/走</text><path d=\"M243 48h15M493 48h15\" stroke=\"#2f7d6b\"/></svg><h4>5. 分层验证与复核</h4><svg viewBox=\"0 0 760 105\" role=\"img\" aria-label=\"分层验证与复核到像素IoU、对象匹配、几何误差、到展示误检和漏检；所有结果可导出并\" style=\"width:100%;max-width:760px;margin:12px 0\"><rect x=\"10\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"22\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">分层验证与复核</text><rect x=\"260\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"272\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">像素IoU、对象匹配、几何误差、</text><rect x=\"510\" y=\"18\" width=\"230\" height=\"60\" rx=\"7\" fill=\"#f5f2ea\"/><text x=\"522\" y=\"52\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d565b\">展示误检和漏检；所有结果可导出并</text><path d=\"M243 48h15M493 48h15\" stroke=\"#2f7d6b\"/></svg>"
+      },
+      "fails": [
+        {
+          "name": "低对比度与高噪声",
+          "why": "模型可能漏检，分数和支持率下降。"
+        },
+        {
+          "name": "干扰与碎片",
+          "why": "碎片可能形成假对象，几何筛选不等于地质成因鉴定。"
+        },
+        {
+          "name": "标定不足",
+          "why": "井斜、方位误差与仪器响应会影响产状和开度。"
+        }
+      ]
+    },
+    "demo": {
+      "mode": "auto",
+      "html": "demo/index.html",
+      "label": "案例演示",
+      "height": 920,
+      "intro": "双目标分割、轨迹拟合、孔洞筛选、密度/产状/开度估计与像素和对象级验证。"
+    }
+  }
+}
