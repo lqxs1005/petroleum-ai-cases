@@ -2,8 +2,8 @@
   "id": "welllog-lithology-qda-05",
   "sceneId": "w4",
   "title": "岩性识别：多曲线融合与交会图对照",
-  "version": "1.0.0",
-  "updated": "2026-11-01",
+  "version": "1.0.1",
+  "updated": "2026-11-02",
   "methods": [
     "ts"
   ],

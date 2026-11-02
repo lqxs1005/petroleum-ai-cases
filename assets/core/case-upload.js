@@ -42,6 +42,7 @@
   var saved = [];
   var memFallback = null;
 
+  var loadGeneration = 0;
   var S = {
     pkg: null,        /* 清单对象 */
     manifest: null,   /* 清单文件 */
@@ -294,7 +295,7 @@
     files = files || [];
 
     if (!pkg) {
-      err('还没有案例包', '把整个案例文件夹拖进左边，或点「选择文件夹」；最快的方式是先下载模板');
+      err('还没有案例包', '选择一个 ZIP 案例包，或把整个案例文件夹拖进左边；最快的方式是先下载模板');
       return out;
     }
 
@@ -843,7 +844,7 @@
       '<div class="mdl-b">' +
       '<ol class="imp-flow">' +
       '<li><b>01</b><span>下载模板，改内容与示范</span></li>' +
-      '<li><b>02</b><span>拖入整个案例文件夹</span></li>' +
+      '<li><b>02</b><span>选择 ZIP 或案例文件夹</span></li>' +
       '<li><b>03</b><span>校验通过后添加</span></li>' +
       '</ol>' +
 
@@ -852,13 +853,15 @@
 
       '<div class="imp-drop" id="imp-drop">' +
       '<input type="file" id="imp-file" multiple hidden>' +
+      '<input type="file" id="imp-zip" accept=".zip,application/zip,application/x-zip-compressed" hidden>' +
       '<input type="file" id="imp-dir" webkitdirectory directory multiple hidden>' +
       '<span class="imp-ic">↑</span>' +
-      '<b>拖入案例文件夹，或点击选择</b>' +
-      '<span class="imp-sub">清单 case.json + 示范页 + 脚本 + 素材，上限 6 MB。推荐把整个文件夹<b>直接拖进虚线框</b>；若点按钮弹出的仍是文件选择框（浏览器不支持选文件夹），可点「选择文件」后 Ctrl+A 全选包内文件</span>' +
+      '<b>拖入案例 ZIP / 文件夹，或点击选择</b>' +
+      '<span class="imp-sub">ZIP可直接选择或拖入，无需手动解压。清单 case.json + 示范页 + 脚本 + 素材，解压后上限 6 MB。推荐把整个文件夹<b>直接拖进虚线框</b>；若点按钮弹出的仍是文件选择框（浏览器不支持选文件夹），可点「选择文件」后 Ctrl+A 全选包内文件</span>' +
       '<span class="imp-choose">' +
       '<button class="btn sm" id="imp-pick-files" type="button">选择文件</button>' +
       '<button class="btn sm ghost" id="imp-pick-dir" type="button">选择文件夹</button>' +
+      '<button class="btn sm" id="imp-pick-zip" type="button">选择 ZIP 压缩包</button>' +
       '</span>' +
       '</div>' +
 
@@ -902,7 +905,7 @@
       '<div class="imp-r">' +
       '<div class="imp-rh"><span>校验结果</span><span class="mono" id="imp-count">未开始</span></div>' +
       '<div class="imp-res" id="imp-res">' +
-      '<div class="imp-empty">把案例文件夹拖进来后，这里会逐项显示检查结果。<br>只有 0 项错误才能添加。</div>' +
+      '<div class="imp-empty">选择 ZIP 或拖入案例文件夹后，这里会逐项显示检查结果。<br>只有 0 项错误才能添加。</div>' +
       '</div>' +
       '</div>' +
 
@@ -927,7 +930,7 @@
   function paintResults(list) {
     var res = q('#imp-res'), cnt = q('#imp-count');
     if (!list.length) {
-      res.innerHTML = '<div class="imp-empty">把案例文件夹拖进来后，这里会逐项显示检查结果。<br>只有 0 项错误才能添加。</div>';
+      res.innerHTML = '<div class="imp-empty">选择 ZIP 或拖入案例文件夹后，这里会逐项显示检查结果。<br>只有 0 项错误才能添加。</div>';
       cnt.textContent = '未开始';
       cnt.className = 'mono';
       return;
@@ -1004,23 +1007,34 @@
   }
 
   /* ---- 载入一组文件 ---- */
-  function loadFiles(fileList) {
+  async function loadFiles(fileList) {
     var files = [].slice.call(fileList || []).filter(function (f) { return f && f.name && f.name !== '.DS_Store'; });
-    if (!files.length) return;
-
-    if (S.loading) return;
+    if (!files.length || S.loading) return;
     S.loading = true;
-    tip('正在读取 ' + files.length + ' 个文件…', '');
-
-    Promise.all(files.map(readOne)).then(function (arrs) {
-      S.loading = false;
+    var generation = ++loadGeneration;
+    if (S.pv && !S.pv.hidden) { closePreview(); document.documentElement.classList.add('mdl-open'); }
+    // Clear the previous package while loading, so a failed import cannot submit old content.
+    S.pkg = null; S.manifest = null; S.files = []; S.raw = [];
+    ['#imp-title-in', '#imp-id', '#imp-ver', '#imp-date', '#imp-scene'].forEach(function(id) { q(id).value = ''; });
+    paintFiles(); preview();
+    tip('正在读取并校验案例包…', '');
+    try {
+      var zips = files.filter(function(f) { return /\.zip$/i.test(f.name); });
+      if (zips.length) {
+        if (files.length !== 1) throw new Error('请一次选择一个ZIP案例包，不要与其他文件混合');
+        if (!global.CaseZip) throw new Error('ZIP导入组件未加载');
+        files = await global.CaseZip.read(zips[0]);
+      }
+      if (files.reduce(function(n, f) { return n + f.size; }, 0) > MAX_TOTAL) throw new Error('文件总大小超过6 MB');
+      var arrs = await Promise.all(files.map(readOne));
+      if (generation !== loadGeneration) return;
       stripRoot(arrs);
       adopt(arrs);
-    }).catch(function (e) {
-      S.loading = false;
-      paintResults([{ level: 'error', msg: '读取文件失败', hint: e.message }]);
-      tip('读取失败，换一个文件夹再试', 'is-err');
-    });
+    } catch (e) {
+      if (generation !== loadGeneration) return;
+      paintResults([{ level: 'error', msg: '案例包读取失败', hint: e.message }]);
+      tip(e.message, 'is-err');
+    } finally { if (generation === loadGeneration) S.loading = false; }
   }
 
   function adopt(arrs) {
@@ -1162,12 +1176,13 @@
 
   /* ---- 提交 ---- */
   function commit() {
+    if (S.loading) { tip('正在读取案例包，请稍候', ''); return; }
     var meta = metaNow();
     var list = checkAll(S.pkg, meta, S.files);
     paintResults(list);
     var sum = summarize(list);
 
-    if (!S.pkg) { tip('请先拖入案例文件夹', 'is-err'); return; }
+    if (!S.pkg) { tip('请先选择 ZIP 或案例文件夹', 'is-err'); return; }
     if (sum.errors) { tip(sum.errors + ' 项不符合要求，按右侧红色提示修改后再添加', 'is-err'); return; }
 
     saved = saved.filter(function (r) { return r.meta && r.meta.id !== meta.id; });
@@ -1196,7 +1211,10 @@
       if (e.target.closest('[data-close]')) { close(); }
     });
 
-    var drop = q('#imp-drop'), fileIn = q('#imp-file'), dirIn = q('#imp-dir');
+    var drop = q('#imp-drop'), fileIn = q('#imp-file'), dirIn = q('#imp-dir'), zipIn = q('#imp-zip');
+    zipIn.addEventListener('click', function(e) { e.stopPropagation(); });
+    q('#imp-pick-zip').addEventListener('click', function(e) { e.stopPropagation(); zipIn.click(); });
+    zipIn.addEventListener('change', function() { loadFiles(zipIn.files); zipIn.value = ''; });
 
     /* 有些环境（国产浏览器兼容模式等）解析 innerHTML 时会丢非标准属性，
        或压根不支持 webkitdirectory —— 弹出的仍是普通文件框。这里补一次属性，
@@ -1390,6 +1408,8 @@
   }
 
   function reset(opts) {
+    loadGeneration++; S.loading = false;
+    q('#imp-zip').value = '';
     S.pkg = null; S.manifest = null; S.files = []; S.raw = [];
     q('#imp-file').value = '';
     q('#imp-dir').value = '';
@@ -1416,6 +1436,7 @@
 
   function close() {
     if (!S.el) return;
+    loadGeneration++; S.loading = false;
     closePreview();
     S.el.hidden = true;
     document.documentElement.classList.remove('mdl-open');

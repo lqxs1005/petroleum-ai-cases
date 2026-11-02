@@ -2,8 +2,8 @@
   "id": "welllog-reservoir-mlp-05",
   "sceneId": "w2",
   "title": "储层参数智能解释：深度回归与岩心试油约束",
-  "version": "2.0.2",
-  "updated": "2026-11-01",
+  "version": "2.0.3",
+  "updated": "2026-11-02",
   "methods": [
     "ts",
     "opt"

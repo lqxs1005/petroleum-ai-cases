@@ -2,8 +2,8 @@
   "id": "welllog-repair-masked-05",
   "sceneId": "w5",
   "title": "测井数据修复：掩码窗口与跨曲线重建",
-  "version": "1.0.0",
-  "updated": "2026-11-01",
+  "version": "1.0.1",
+  "updated": "2026-11-02",
   "methods": [
     "ts"
   ],

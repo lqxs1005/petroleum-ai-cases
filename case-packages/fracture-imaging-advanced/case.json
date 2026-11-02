@@ -2,8 +2,8 @@
   "id": "welllog-fracture-objects-05",
   "sceneId": "w3",
   "title": "成像测井裂缝与孔洞识别：对象检测与参数解释",
-  "version": "1.0.0",
-  "updated": "2026-11-01",
+  "version": "1.0.1",
+  "updated": "2026-11-02",
   "methods": [
     "cv"
   ],
