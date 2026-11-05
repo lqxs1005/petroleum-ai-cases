@@ -1619,6 +1619,14 @@
     restoreArchived(btn.getAttribute('data-restore-archived'));
   });
 
+  (global.AtlasBundledPackages || []).forEach(function (record) {
+    var definition = toCase(record);
+    definition.imported = false;
+    definition.bundled = true;
+    global.Cases.register(definition);
+  });
+  delete global.AtlasBundledPackages;
+
   /* 启动即恢复：必须在 shell.js 渲染之前完成 */
   if (global.Cases) {
     try { loadSaved(); } catch (e) { /* 存储损坏时静默跳过，不影响站点启动 */ }

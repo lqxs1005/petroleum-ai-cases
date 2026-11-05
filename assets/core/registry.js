@@ -21,7 +21,7 @@
   // Only this submitted collection has one preferred final case per scene.
   // Other students' explicit new uploads retain the original multi-case behavior.
   var finalIds = ['welllog-layer-ml-05','welllog-reservoir-mlp-05','welllog-fracture-objects-05','welllog-lithology-qda-05','welllog-repair-masked-05'];
-  function isBundled(c) { return !!c && !c.imported && finalIds.indexOf(c.id) >= 0; }
+  function isBundled(c) { return !!c && !c.imported && (c.bundled || finalIds.indexOf(c.id) >= 0); }
   function bundleForScene(sceneId) { return bySceneAll(sceneId).filter(isBundled)[0] || null; }
 
   function reg(def) {
